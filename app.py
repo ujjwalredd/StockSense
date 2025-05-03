@@ -10,10 +10,10 @@ app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key_here')
 
 def get_db_connection():
     return psycopg2.connect(
-        dbname=os.environ.get('DB_NAME', 'StockSense'),
-        user=os.environ.get('DB_USER', 'postgres'),
-        password=os.environ.get('DB_PASSWORD', 'root'),
-        host=os.environ.get('DB_HOST', 'localhost'),
+        dbname=os.environ.get('DB_NAME', 'stocksensedatabase'),
+        user=os.environ.get('DB_USER', 'stocksensedatabase_user'),
+        password=os.environ.get('DB_PASSWORD', 'xt1JXy1vT745GSFOJTtiIfxhnzvZNXv4'),
+        host=os.environ.get('DB_HOST', 'dpg-d0b74qpr0fns73d724u0-a'),
         port=os.environ.get('DB_PORT', '5432')
     )
 
