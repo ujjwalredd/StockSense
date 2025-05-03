@@ -1,20 +1,20 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 import psycopg2
 import psycopg2.errors
-
 import pandas as pd
 from datetime import datetime
+import os
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'
+app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key_here')
 
 def get_db_connection():
     return psycopg2.connect(
-        dbname='StockSense',
-        user='postgres',
-        password='root',
-        host='localhost',
-        port='5432'
+        dbname=os.environ.get('DB_NAME', 'StockSense'),
+        user=os.environ.get('DB_USER', 'postgres'),
+        password=os.environ.get('DB_PASSWORD', 'root'),
+        host=os.environ.get('DB_HOST', 'localhost'),
+        port=os.environ.get('DB_PORT', '5432')
     )
 
 @app.route('/')
@@ -24,7 +24,6 @@ def home():
 @app.route('/main')
 def main():
     return render_template("main.html")
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -76,12 +75,9 @@ def signup():
 def index():
     conn = get_db_connection()
     cur = conn.cursor()
-
-    # Load stock list
     cur.execute("SELECT stock_name FROM Stock ORDER BY stock_name;")
     stocks = cur.fetchall()
 
-    # Load watchlists
     user_watchlists = []
     user_id = None
     if 'username' in session:
@@ -125,7 +121,6 @@ def index():
             }
 
     conn.close()
-
     return render_template(
         'index.html',
         stocks=stocks,
@@ -202,8 +197,6 @@ def view_watchlist_stocks(watchlist_id):
         return redirect(url_for('login'))
     conn = get_db_connection()
     cur = conn.cursor()
-
-    # Stocks already in this watchlist
     cur.execute("""
         SELECT s.stock_name 
         FROM WatchlistStocks w 
@@ -211,17 +204,13 @@ def view_watchlist_stocks(watchlist_id):
         WHERE w.watchlist_id = %s
     """, (watchlist_id,))
     watchlist_stocks = cur.fetchall()
-
-    # ✅ All available stocks for dropdown
     cur.execute("SELECT stock_name FROM Stock ORDER BY stock_name;")
     all_stocks = cur.fetchall()
-
     conn.close()
     return render_template('watchlist_stocks.html', 
                            watchlist_id=watchlist_id, 
                            stocks=watchlist_stocks, 
                            all_stocks=all_stocks)
-
 
 @app.route('/watchlists/<int:watchlist_id>/remove/<stock_name>')
 def remove_stock(watchlist_id, stock_name):
@@ -238,29 +227,23 @@ def remove_stock(watchlist_id, stock_name):
 def stock_details(stock_name):
     conn = get_db_connection()
     cur = conn.cursor()
-    
-    # Fetch stock data
     df = pd.read_sql_query("""
         SELECT p.date, p.open, p.high, p.low, p.close, p.volume
         FROM Price p
         WHERE p.stock_name = %s
         ORDER BY p.date ASC
     """, conn, params=(stock_name,))
-    
-    # Fetch user watchlists if logged in
     user_watchlists = []
     if 'username' in session:
         cur.execute("SELECT user_ID FROM Users WHERE username = %s", (session['username'],))
         user_id = cur.fetchone()[0]
         cur.execute("SELECT watchlist_id, name FROM Watchlists WHERE user_ID = %s", (user_id,))
         user_watchlists = cur.fetchall()
-
     conn.close()
 
     if df.empty:
         return f"No data found for {stock_name}"
 
-    # Calculate stats
     avg_close = round(df['close'].mean(), 2)
     high_max = df['high'].max()
     low_min = df['low'].min()
@@ -286,6 +269,7 @@ def stock_details(stock_name):
                            candlestick_data=candlestick_data,
                            user_watchlists=user_watchlists)
 
-
-if __name__ == '__main__':
-    app.run(debug=True)
+# Deployment entry point for Gunicorn
+if __name__ == "__main__":
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
