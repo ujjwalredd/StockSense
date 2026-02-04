@@ -37,7 +37,7 @@
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/your-username/stocksense.git
+   git clone https://github.com/ujjwalredd/stocksense.git
    cd stocksense
 2. **Install dependencies**
 
